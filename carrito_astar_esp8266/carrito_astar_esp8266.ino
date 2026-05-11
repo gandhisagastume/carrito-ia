@@ -36,8 +36,21 @@ const char* WIFI_PASSWORD = "soria123";
 // ============================================================
 //  CALIBRACIÓN
 // ============================================================
-const float VELOCIDAD_CM_S  = 14.0;    // cm/s — calibrar midiendo en el suelo
-const int   MARGEN_GIRO_MS  = 80;
+// VELOCIDAD_CM_S: si el carro recorre MÁS de lo esperado → SUBE este valor.
+//                 si el carro recorre MENOS de lo esperado → BÁJALO.
+// Cálculo: velocidad_real = distancia_real / tiempo_aplicado
+// Ejemplo: quería 52 cm, recorrió 200 cm, tiempo = 52/14*1s = 3.71s
+//          velocidad real = 200 / 3.71 ≈ 54 cm/s
+const float VELOCIDAD_CM_S  = 54.0;  // AJUSTADO: era 14.0
+
+// TIEMPO_GIRO_MS: si el giro es el DOBLE de lo esperado → divide a la mitad.
+// Quería 90° y giró 180° → 700ms / 2 = 350ms
+const unsigned long TIEMPO_GIRO_MS  = 350;  // AJUSTADO: era 700ms
+
+// Pausa entre instrucciones (ms)
+const unsigned long PAUSA_ENTRE_PASOS_MS = 1500;
+
+const int   MARGEN_GIRO_MS  = 30;    // Margen tras giro para absorber inercia
 const float UMBRAL_GIRO_DEG = 85.0;
 const float GYRO_SENSITIVITY = 131.0;
 
@@ -220,16 +233,18 @@ void ejecutarAvanzar(float distancia_cm) {
     avanzar();
     unsigned long inicio = millis();
     while (millis() - inicio < tiempoMs) {
-        yield(); // Mantener WiFi vivo durante avance
+        yield();
     }
     motoresStop();
-    delay(300);
+    LOG("[EXEC] Motor detenido. Pausa entre pasos...");
+    delay(PAUSA_ENTRE_PASOS_MS);
 }
 
 void ejecutarGiroConTiempo(bool esDerecha) {
-    // Fallback: usa tiempo fijo de ~700ms para ~90° (ajustar según velocidad de giro)
-    const unsigned long TIEMPO_GIRO_MS = 700;
-    LOG("[EXEC] GIRO con tiempo fijo (sin giroscopio)");
+    Serial.print("[EXEC] GIRO tiempo fijo: ");
+    Serial.print(TIEMPO_GIRO_MS);
+    Serial.println(" ms");
+    LOG("[EXEC] (Si el angulo no es correcto, ajusta TIEMPO_GIRO_MS en el codigo)");
 
     if (esDerecha) girarDerecha();
     else           girarIzquierda();
@@ -240,7 +255,8 @@ void ejecutarGiroConTiempo(bool esDerecha) {
     }
     delay(MARGEN_GIRO_MS);
     motoresStop();
-    delay(400);
+    LOG("[EXEC] Giro finalizado. Pausa entre pasos...");
+    delay(PAUSA_ENTRE_PASOS_MS);
 }
 
 void ejecutarGiroConGiroscopio(bool esDerecha) {
@@ -273,6 +289,8 @@ void ejecutarGiroConGiroscopio(bool esDerecha) {
     motoresStop();
     delay(400);
     LOGf("[EXEC] Angulo final alcanzado: ", anguloAcumulado);
+    LOG("[EXEC] Pausa entre pasos...");
+    delay(PAUSA_ENTRE_PASOS_MS);
 }
 
 void ejecutarGiro(bool esDerecha) {
