@@ -27,6 +27,11 @@ const char* WIFI_PASSWORD = "soria123";
 #define MOTOR_DER_BCK  15   // D8 → IN4
 
 // ============================================================
+//  PINES — BUZZER / BOCINA
+// ============================================================
+#define PIN_BUZZER 16       // D0 → Positivo de la bocina
+
+// ============================================================
 //  PINES — MPU-9250
 // ============================================================
 #define MPU_SDA  4
@@ -45,7 +50,7 @@ const float VELOCIDAD_CM_S  = 65.0;  // AJUSTADO: era 14.0
 
 // TIEMPO_GIRO_MS: si el giro es el DOBLE de lo esperado → divide a la mitad.
 // Quería 90° y giró 180° → 700ms / 2 = 350ms
-const unsigned long TIEMPO_GIRO_MS  = 360;  // AJUSTADO: era 700ms
+const unsigned long TIEMPO_GIRO_MS  = 340;  // AJUSTADO: era 700ms
 
 // Pausa entre instrucciones (ms)
 const unsigned long PAUSA_ENTRE_PASOS_MS = 1500;
@@ -339,6 +344,12 @@ void ejecutarSiguientePaso() {
         ejecutando = false;
         terminado  = true;
         LOG("[EXEC] STOP — Ruta finalizada.");
+        
+        // Sonido de victoria (doble pitido agudo)
+        tone(PIN_BUZZER, 2000, 200);
+        delay(250);
+        tone(PIN_BUZZER, 2000, 400);
+        
         return;
     } else {
         Serial.print("[EXEC] ACCION DESCONOCIDA: '");
@@ -430,6 +441,9 @@ void handleExecute() {
     ejecutando  = true;
     terminado   = false;
 
+    // Pitido corto de inicio de marcha
+    tone(PIN_BUZZER, 1000, 100);
+
     String resp = "{\"status\":\"executing\",\"total_steps\":" + String(totalInstrucciones) + "}";
     server.send(200, "application/json", resp);
     LOG("[HTTP] Respuesta enviada — comenzando ejecución...");
@@ -477,6 +491,13 @@ void setup() {
     pinMode(MOTOR_DER_BCK, OUTPUT);
     motoresStop();
     LOG("[SETUP] Pines de motor configurados como OUTPUT.");
+
+    // Configurar bocina
+    pinMode(PIN_BUZZER, OUTPUT);
+    digitalWrite(PIN_BUZZER, LOW);
+    
+    // Pitido de encendido
+    tone(PIN_BUZZER, 1500, 300);
 
     // TEST RÁPIDO DE MOTORES (500ms) — COMENTA SI NO LO NECESITAS
     LOG("[SETUP] TEST: Avanzando 500ms para verificar motores...");
