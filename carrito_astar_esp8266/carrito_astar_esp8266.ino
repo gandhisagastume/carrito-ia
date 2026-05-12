@@ -41,11 +41,11 @@ const char* WIFI_PASSWORD = "soria123";
 // Cálculo: velocidad_real = distancia_real / tiempo_aplicado
 // Ejemplo: quería 52 cm, recorrió 200 cm, tiempo = 52/14*1s = 3.71s
 //          velocidad real = 200 / 3.71 ≈ 54 cm/s
-const float VELOCIDAD_CM_S  = 54.0;  // AJUSTADO: era 14.0
+const float VELOCIDAD_CM_S  = 65.0;  // AJUSTADO: era 14.0
 
 // TIEMPO_GIRO_MS: si el giro es el DOBLE de lo esperado → divide a la mitad.
 // Quería 90° y giró 180° → 700ms / 2 = 350ms
-const unsigned long TIEMPO_GIRO_MS  = 350;  // AJUSTADO: era 700ms
+const unsigned long TIEMPO_GIRO_MS  = 360;  // AJUSTADO: era 700ms
 
 // Pausa entre instrucciones (ms)
 const unsigned long PAUSA_ENTRE_PASOS_MS = 1500;
@@ -369,8 +369,8 @@ void handleExecute() {
     Serial.print("[HTTP] Body: ");
     Serial.println(body.substring(0, 300)); // Primeros 300 chars para no saturar
 
-    // ArduinoJson v6
-    StaticJsonDocument<4096> doc;
+    // ArduinoJson v6 — DynamicJsonDocument usa HEAP, no stack (evita WDT reset)
+    DynamicJsonDocument doc(2048);
     DeserializationError error = deserializeJson(doc, body);
     if (error) {
         Serial.print("[HTTP] ERROR JSON: ");
