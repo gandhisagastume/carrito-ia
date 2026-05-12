@@ -97,38 +97,41 @@ void LOGs(const char* label, const char* val) {
 }
 
 // ============================================================
-//  MOTORES
+//  MOTORES — Escritura atómica de registros GPIO
+//  GPOS = GPIO Output Set   → pone pines en HIGH simultáneamente
+//  GPOC = GPIO Output Clear → pone pines en LOW  simultáneamente
+//  Esto evita el desfase entre llantas que causa desvíos en línea recta.
+//  GPIO14=IZQ_FWD, GPIO12=IZQ_BCK, GPIO13=DER_FWD, GPIO15=DER_BCK
 // ============================================================
+#define PIN_MASK_IZQ_FWD  (1 << 14)
+#define PIN_MASK_IZQ_BCK  (1 << 12)
+#define PIN_MASK_DER_FWD  (1 << 13)
+#define PIN_MASK_DER_BCK  (1 << 15)
+#define ALL_MOTOR_PINS    (PIN_MASK_IZQ_FWD | PIN_MASK_IZQ_BCK | PIN_MASK_DER_FWD | PIN_MASK_DER_BCK)
+
 void motoresStop() {
-    digitalWrite(MOTOR_IZQ_FWD, LOW);
-    digitalWrite(MOTOR_IZQ_BCK, LOW);
-    digitalWrite(MOTOR_DER_FWD, LOW);
-    digitalWrite(MOTOR_DER_BCK, LOW);
-    LOG("[MOTOR] STOP — todos los pines en LOW");
+    GPOC = ALL_MOTOR_PINS;  // Todos los pines de motor → LOW en un solo ciclo
+    LOG("[MOTOR] STOP — todos los pines en LOW (atomico)");
 }
 
 void avanzar() {
-    digitalWrite(MOTOR_IZQ_FWD, HIGH);
-    digitalWrite(MOTOR_IZQ_BCK, LOW);
-    digitalWrite(MOTOR_DER_FWD, HIGH);
-    digitalWrite(MOTOR_DER_BCK, LOW);
-    LOG("[MOTOR] AVANZAR — IZQ_FWD=HIGH, DER_FWD=HIGH");
+    GPOC = PIN_MASK_IZQ_BCK | PIN_MASK_DER_BCK;  // Atrás → OFF
+    GPOS = PIN_MASK_IZQ_FWD | PIN_MASK_DER_FWD;  // Adelante → ON simultáneo
+    LOG("[MOTOR] AVANZAR — IZQ_FWD+DER_FWD HIGH (atomico)");
 }
 
 void girarDerecha() {
-    digitalWrite(MOTOR_IZQ_FWD, HIGH);
-    digitalWrite(MOTOR_IZQ_BCK, LOW);
-    digitalWrite(MOTOR_DER_FWD, LOW);
-    digitalWrite(MOTOR_DER_BCK, LOW);
-    LOG("[MOTOR] GIRO DERECHA — IZQ_FWD=HIGH, DER=OFF");
+    // Solo llanta izquierda avanza, derecha quieta
+    GPOC = PIN_MASK_IZQ_BCK | PIN_MASK_DER_FWD | PIN_MASK_DER_BCK;
+    GPOS = PIN_MASK_IZQ_FWD;
+    LOG("[MOTOR] GIRO DERECHA — solo IZQ_FWD=HIGH");
 }
 
 void girarIzquierda() {
-    digitalWrite(MOTOR_IZQ_FWD, LOW);
-    digitalWrite(MOTOR_IZQ_BCK, LOW);
-    digitalWrite(MOTOR_DER_FWD, HIGH);
-    digitalWrite(MOTOR_DER_BCK, LOW);
-    LOG("[MOTOR] GIRO IZQUIERDA — IZQ=OFF, DER_FWD=HIGH");
+    // Solo llanta derecha avanza, izquierda quieta
+    GPOC = PIN_MASK_IZQ_FWD | PIN_MASK_IZQ_BCK | PIN_MASK_DER_BCK;
+    GPOS = PIN_MASK_DER_FWD;
+    LOG("[MOTOR] GIRO IZQUIERDA — solo DER_FWD=HIGH");
 }
 
 // ============================================================
