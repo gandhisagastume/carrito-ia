@@ -89,42 +89,49 @@ float anguloAcumulado = 0;
 #define PIN_MASK_DER_BCK  (1 << 15)
 
 // ============================================================
-//  MOVIMIENTO MANUAL (sin encolar, ejecuta inmediatamente)
+//  MOVIMIENTO MANUAL (digitalWrite explicito, ambas llantas)
 // ============================================================
-void retroceder() {
-    GPOC = PIN_MASK_IZQ_FWD | PIN_MASK_DER_FWD;  // Adelante → OFF
-    GPOS = PIN_MASK_IZQ_BCK | PIN_MASK_DER_BCK;  // Atras → ON simultaneo
-    LOG("[MANUAL] RETROCEDER — IZQ_BCK+DER_BCK HIGH (atomico)");
-}
-
 void ejecutarManual(const char* accion) {
     if (strcmp(accion, "FORWARD") == 0) {
-        avanzar();
+        // Ambas llantas adelante
+        digitalWrite(MOTOR_IZQ_BCK, LOW);
+        digitalWrite(MOTOR_DER_BCK, LOW);
+        digitalWrite(MOTOR_IZQ_FWD, HIGH);
+        digitalWrite(MOTOR_DER_FWD, HIGH);
+        LOG("[MANUAL] AVANZAR — ambas llantas adelante");
+        delay(250);
+        motoresStop();
     } else if (strcmp(accion, "BACKWARD") == 0) {
-        retroceder();
+        // Ambas llantas atras
+        digitalWrite(MOTOR_IZQ_FWD, LOW);
+        digitalWrite(MOTOR_DER_FWD, LOW);
+        digitalWrite(MOTOR_IZQ_BCK, HIGH);
+        digitalWrite(MOTOR_DER_BCK, HIGH);
+        LOG("[MANUAL] RETROCEDER — ambas llantas atras");
+        delay(250);
+        motoresStop();
     } else if (strcmp(accion, "LEFT") == 0) {
-        girarIzquierda();
+        // Giro izquierda 90°: solo llanta derecha avanza
+        digitalWrite(MOTOR_IZQ_FWD, LOW);
+        digitalWrite(MOTOR_IZQ_BCK, LOW);
+        digitalWrite(MOTOR_DER_BCK, LOW);
+        digitalWrite(MOTOR_DER_FWD, HIGH);
+        LOG("[MANUAL] GIRO IZQUIERDA 90°");
         delay(TIEMPO_GIRO_MS);
         motoresStop();
-        return; // ya detuve
     } else if (strcmp(accion, "RIGHT") == 0) {
-        girarDerecha();
+        // Giro derecha 90°: solo llanta izquierda avanza
+        digitalWrite(MOTOR_DER_FWD, LOW);
+        digitalWrite(MOTOR_DER_BCK, LOW);
+        digitalWrite(MOTOR_IZQ_BCK, LOW);
+        digitalWrite(MOTOR_IZQ_FWD, HIGH);
+        LOG("[MANUAL] GIRO DERECHA 90°");
         delay(TIEMPO_GIRO_MS);
         motoresStop();
-        return; // ya detuve
     } else if (strcmp(accion, "STOP") == 0) {
         motoresStop();
     } else {
         LOG("[MANUAL] Accion desconocida, ignorando.");
-        return;
-    }
-
-    // Para avanzar/retroceder, aplicamos un pulso corto (200ms) para que no se vaya lejos
-    // El frontend puede mantener presionado para "caminar" paso a paso
-    if (strcmp(accion, "FORWARD") == 0 || strcmp(accion, "BACKWARD") == 0) {
-        delay(250);
-        motoresStop();
-        LOG("[MANUAL] Motor detenido tras pulso corto.");
     }
 }
 
