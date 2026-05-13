@@ -182,27 +182,37 @@ void LOGs(const char* label, const char* val) {
 #define ALL_MOTOR_PINS    (PIN_MASK_IZQ_FWD | PIN_MASK_IZQ_BCK | PIN_MASK_DER_FWD | PIN_MASK_DER_BCK)
 
 void motoresStop() {
-    GPO &= ~ALL_MOTOR_PINS;  // Todos los pines de motor → LOW en un solo ciclo
-    LOG("[MOTOR] STOP — todos los pines en LOW (atomico)");
+    digitalWrite(MOTOR_IZQ_FWD, LOW);
+    digitalWrite(MOTOR_IZQ_BCK, LOW);
+    digitalWrite(MOTOR_DER_FWD, LOW);
+    digitalWrite(MOTOR_DER_BCK, LOW);
+    LOG("[MOTOR] STOP — todos los pines en LOW");
 }
 
 void avanzar() {
-    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_IZQ_FWD | PIN_MASK_DER_FWD;
-    LOG("[MOTOR] AVANZAR — IZQ_FWD+DER_FWD HIGH (atomico)");
+    digitalWrite(MOTOR_IZQ_BCK, LOW);
+    digitalWrite(MOTOR_DER_BCK, LOW);
+    digitalWrite(MOTOR_IZQ_FWD, HIGH);
+    digitalWrite(MOTOR_DER_FWD, HIGH);
+    LOG("[MOTOR] AVANZAR — ambas llantas adelante");
 }
 
 void girarDerecha() {
     // Giro diferencial DERECHA: IZQ avanza, DER retrocede
-    // Ambas llantas activas → giro sobre el eje central, más preciso
-    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_IZQ_FWD | PIN_MASK_DER_BCK;
-    LOG("[MOTOR] GIRO DERECHA diferencial — IZQ_FWD=HIGH, DER_BCK=HIGH");
+    digitalWrite(MOTOR_IZQ_BCK, LOW);
+    digitalWrite(MOTOR_DER_FWD, LOW);
+    digitalWrite(MOTOR_IZQ_FWD, HIGH);
+    digitalWrite(MOTOR_DER_BCK, HIGH);
+    LOG("[MOTOR] GIRO DERECHA diferencial");
 }
 
 void girarIzquierda() {
     // Giro diferencial IZQUIERDA: DER avanza, IZQ retrocede
-    // Ambas llantas activas → giro sobre el eje central, más preciso
-    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_DER_FWD | PIN_MASK_IZQ_BCK;
-    LOG("[MOTOR] GIRO IZQUIERDA diferencial — DER_FWD=HIGH, IZQ_BCK=HIGH");
+    digitalWrite(MOTOR_IZQ_FWD, LOW);
+    digitalWrite(MOTOR_DER_BCK, LOW);
+    digitalWrite(MOTOR_DER_FWD, HIGH);
+    digitalWrite(MOTOR_IZQ_BCK, HIGH);
+    LOG("[MOTOR] GIRO IZQUIERDA diferencial");
 }
 
 // ============================================================
