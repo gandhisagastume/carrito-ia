@@ -48,12 +48,31 @@ const char* WIFI_PASSWORD = "soria123";
 //          velocidad real = 200 / 3.71 ≈ 54 cm/s
 const float VELOCIDAD_CM_S  = 65.0;  // AJUSTADO: era 14.0
 
-// TIEMPO_GIRO_MS: si el giro es el DOBLE de lo esperado → divide a la mitad.
-// Quería 90° y giró 180° → 700ms / 2 = 350ms
-const unsigned long TIEMPO_GIRO_MS  = 340;  // AJUSTADO: era 700ms
+// ─────────────────────────────────────────────────────────────
+//  CÁLCULO GIRO DIFERENCIAL 90°
+//  Carrito: ancho de track = 18 cm → radio pivote = 9 cm
+//  Arco cada llanta = (π/2) × 9 cm ≈ 14.137 cm
+//  A VELOCIDAD_CM_S=65 → tiempo = 14.137/65 × 1000 ≈ 217 ms
+//  En giro diferencial ambas llantas giran (una fwd, otra bck)
+//  → el robot gira sobre su propio eje con mayor precisión.
+// ─────────────────────────────────────────────────────────────
+const float  TRACK_WIDTH_CM = 18.0;    // Ancho entre centros de ruedas
+const float  ARCO_GIRO_CM   = (3.14159265 / 2.0) * (TRACK_WIDTH_CM / 2.0); // ≈ 14.14 cm
+// TIEMPO_GIRO_MS: calculado = 217 ms. Ajusta si el giro no es exacto.
+// Si gira DE MÁS → reduce. Si gira DE MENOS → sube.
+const unsigned long TIEMPO_GIRO_MS = 217;   // ms para giro diferencial 90°
 
 // Pausa entre instrucciones (ms)
 const unsigned long PAUSA_ENTRE_PASOS_MS = 1500;
+
+// ─────────────────────────────────────────────────────────────
+//  MINIPAUSA ENTRE NODOS
+//  Cuadrícula 8×8 de 25×25 cm → cada celda = 25 cm
+//  Cuando el carrito avanza más de un cuadro recto, hace una
+//  pausa de 500 ms al terminar cada celda completa.
+// ─────────────────────────────────────────────────────────────
+const float  CELDA_CM             = 25.0;   // Tamaño de cada celda de la cuadrícula
+const unsigned long PAUSA_NODO_MS = 500;    // Pausa al cruzar cada nodo intermedio
 
 const int   MARGEN_GIRO_MS  = 30;    // Margen tras giro para absorber inercia
 const float UMBRAL_GIRO_DEG = 85.0;
@@ -111,21 +130,21 @@ void ejecutarManual(const char* accion) {
         delay(250);
         motoresStop();
     } else if (strcmp(accion, "LEFT") == 0) {
-        // Giro izquierda 90°: solo llanta derecha avanza
+        // Giro diferencial IZQUIERDA: DER avanza, IZQ retrocede
         digitalWrite(MOTOR_IZQ_FWD, LOW);
-        digitalWrite(MOTOR_IZQ_BCK, LOW);
         digitalWrite(MOTOR_DER_BCK, LOW);
         digitalWrite(MOTOR_DER_FWD, HIGH);
-        LOG("[MANUAL] GIRO IZQUIERDA 90°");
+        digitalWrite(MOTOR_IZQ_BCK, HIGH);
+        LOG("[MANUAL] GIRO IZQUIERDA 90° diferencial");
         delay(TIEMPO_GIRO_MS);
         motoresStop();
     } else if (strcmp(accion, "RIGHT") == 0) {
-        // Giro derecha 90°: solo llanta izquierda avanza
+        // Giro diferencial DERECHA: IZQ avanza, DER retrocede
         digitalWrite(MOTOR_DER_FWD, LOW);
-        digitalWrite(MOTOR_DER_BCK, LOW);
         digitalWrite(MOTOR_IZQ_BCK, LOW);
         digitalWrite(MOTOR_IZQ_FWD, HIGH);
-        LOG("[MANUAL] GIRO DERECHA 90°");
+        digitalWrite(MOTOR_DER_BCK, HIGH);
+        LOG("[MANUAL] GIRO DERECHA 90° diferencial");
         delay(TIEMPO_GIRO_MS);
         motoresStop();
     } else if (strcmp(accion, "STOP") == 0) {
@@ -173,15 +192,17 @@ void avanzar() {
 }
 
 void girarDerecha() {
-    // Solo llanta izquierda avanza, derecha quieta
-    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_IZQ_FWD;
-    LOG("[MOTOR] GIRO DERECHA — solo IZQ_FWD=HIGH");
+    // Giro diferencial DERECHA: IZQ avanza, DER retrocede
+    // Ambas llantas activas → giro sobre el eje central, más preciso
+    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_IZQ_FWD | PIN_MASK_DER_BCK;
+    LOG("[MOTOR] GIRO DERECHA diferencial — IZQ_FWD=HIGH, DER_BCK=HIGH");
 }
 
 void girarIzquierda() {
-    // Solo llanta derecha avanza, izquierda quieta
-    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_DER_FWD;
-    LOG("[MOTOR] GIRO IZQUIERDA — solo DER_FWD=HIGH");
+    // Giro diferencial IZQUIERDA: DER avanza, IZQ retrocede
+    // Ambas llantas activas → giro sobre el eje central, más preciso
+    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_DER_FWD | PIN_MASK_IZQ_BCK;
+    LOG("[MOTOR] GIRO IZQUIERDA diferencial — DER_FWD=HIGH, IZQ_BCK=HIGH");
 }
 
 // ============================================================
@@ -276,20 +297,64 @@ void ejecutarAvanzar(float distancia_cm) {
         LOG("[EXEC] distancia_cm es 0 o negativa — ignorando FORWARD");
         return;
     }
-    unsigned long tiempoMs = (unsigned long)((distancia_cm / VELOCIDAD_CM_S) * 1000.0);
+
     Serial.print("[EXEC] AVANZAR: ");
     Serial.print(distancia_cm);
-    Serial.print(" cm → tiempo estimado: ");
-    Serial.print(tiempoMs);
-    Serial.println(" ms");
+    Serial.print(" cm  (CELDA_CM=");
+    Serial.print(CELDA_CM);
+    Serial.println(" cm)");
 
-    avanzar();
-    unsigned long inicio = millis();
-    while (millis() - inicio < tiempoMs) {
-        yield();
+    // ── Minipausa entre nodos ────────────────────────────────
+    // Dividimos la distancia total en tramos de CELDA_CM.
+    // Al terminar cada tramo COMPLETO (nodo intermedio) hacemos
+    // una pausa de PAUSA_NODO_MS antes de continuar.
+    // El último tramo (o si es < CELDA_CM) se ejecuta sin pausa.
+    // ─────────────────────────────────────────────────────────
+    int   nodosCompletos  = (int)(distancia_cm / CELDA_CM);  // ej: 75cm→3, 25cm→1
+    float restoFinal_cm   = distancia_cm - nodosCompletos * CELDA_CM;
+
+    Serial.print("[EXEC] Nodos a recorrer: ");
+    Serial.print(nodosCompletos);
+    Serial.print("  resto: ");
+    Serial.print(restoFinal_cm);
+    Serial.println(" cm");
+
+    // Recorrer cada celda completa con minipausa al final
+    for (int n = 0; n < nodosCompletos; n++) {
+        unsigned long tiempoTramo = (unsigned long)((CELDA_CM / VELOCIDAD_CM_S) * 1000.0);
+        Serial.print("[EXEC]   Tramo ");
+        Serial.print(n + 1);
+        Serial.print("/");
+        Serial.print(nodosCompletos);
+        Serial.print(" → ");
+        Serial.print(tiempoTramo);
+        Serial.println(" ms");
+
+        avanzar();
+        unsigned long inicio = millis();
+        while (millis() - inicio < tiempoTramo) { yield(); }
+        motoresStop();
+
+        // Minipausa al cruzar el nodo (solo si hay más tramos o hay resto)
+        if (n < nodosCompletos - 1 || restoFinal_cm > 0.5f) {
+            LOG("[EXEC]   -- minipausa nodo --");
+            delay(PAUSA_NODO_MS);
+        }
     }
-    motoresStop();
-    LOG("[EXEC] Motor detenido. Pausa entre pasos...");
+
+    // Recorrer fracción restante (si existe)
+    if (restoFinal_cm > 0.5f) {
+        unsigned long tiempoResto = (unsigned long)((restoFinal_cm / VELOCIDAD_CM_S) * 1000.0);
+        Serial.print("[EXEC]   Resto final → ");
+        Serial.print(tiempoResto);
+        Serial.println(" ms");
+        avanzar();
+        unsigned long inicioR = millis();
+        while (millis() - inicioR < tiempoResto) { yield(); }
+        motoresStop();
+    }
+
+    LOG("[EXEC] AVANZAR completo. Pausa entre pasos...");
     delay(PAUSA_ENTRE_PASOS_MS);
 }
 

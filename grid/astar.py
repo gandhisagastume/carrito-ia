@@ -88,7 +88,7 @@ def calculate_astar(grid_state):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-def translate_path_to_instructions(path, initial_orientation, cell_size_cm=26):
+def translate_path_to_instructions(path, initial_orientation, cell_size_cm=25):
     if len(path) < 2:
         return []
 
