@@ -59,7 +59,7 @@ const float VELOCIDAD_CM_S  = 65.0;  // AJUSTADO: era 14.0
 const float  TRACK_WIDTH_CM = 18.0;    // Ancho entre centros de ruedas
 const float  ARCO_GIRO_CM   = (3.14159265 / 2.0) * (TRACK_WIDTH_CM / 2.0); // ≈ 14.14 cm
 // TIEMPO_GIRO_MS: calculado era 217 ms, ajustado a 265 ms para completar los 90°.
-const unsigned long TIEMPO_GIRO_MS = 265;   // ms para giro diferencial 90°
+const unsigned long TIEMPO_GIRO_MS = 245;   // ms para giro diferencial 90°
 
 // Pausa entre instrucciones (ms)
 const unsigned long PAUSA_ENTRE_PASOS_MS = 1500;

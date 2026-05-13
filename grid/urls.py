@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('', views.index, name='index'),
     path('manual/', views.manual_control, name='manual_control'),
+    path('semiauto/', views.semiauto_control, name='semiauto_control'),
     path('api/calculate/', views.calculate_path, name='calculate_path'),
     path('api/send-to-cart/', views.send_to_cart, name='send_to_cart'),
     path('api/check-esp/', views.check_esp, name='check_esp'),

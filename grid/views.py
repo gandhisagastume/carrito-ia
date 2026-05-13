@@ -76,6 +76,9 @@ def cart_status(request):
 def manual_control(request):
     return render(request, 'grid/manual.html')
 
+def semiauto_control(request):
+    return render(request, 'grid/semiauto.html')
+
 def manual_command(request):
     if request.method == 'POST':
         try:
