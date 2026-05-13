@@ -58,9 +58,8 @@ const float VELOCIDAD_CM_S  = 65.0;  // AJUSTADO: era 14.0
 // ─────────────────────────────────────────────────────────────
 const float  TRACK_WIDTH_CM = 18.0;    // Ancho entre centros de ruedas
 const float  ARCO_GIRO_CM   = (3.14159265 / 2.0) * (TRACK_WIDTH_CM / 2.0); // ≈ 14.14 cm
-// TIEMPO_GIRO_MS: calculado = 217 ms. Ajusta si el giro no es exacto.
-// Si gira DE MÁS → reduce. Si gira DE MENOS → sube.
-const unsigned long TIEMPO_GIRO_MS = 217;   // ms para giro diferencial 90°
+// TIEMPO_GIRO_MS: calculado era 217 ms, ajustado a 265 ms para completar los 90°.
+const unsigned long TIEMPO_GIRO_MS = 265;   // ms para giro diferencial 90°
 
 // Pausa entre instrucciones (ms)
 const unsigned long PAUSA_ENTRE_PASOS_MS = 1500;
@@ -190,6 +189,7 @@ void motoresStop() {
 }
 
 void avanzar() {
+    pinMode(MOTOR_DER_FWD, OUTPUT); pinMode(MOTOR_DER_BCK, OUTPUT);
     digitalWrite(MOTOR_IZQ_BCK, LOW);
     digitalWrite(MOTOR_DER_BCK, LOW);
     digitalWrite(MOTOR_IZQ_FWD, HIGH);
@@ -199,6 +199,7 @@ void avanzar() {
 
 void girarDerecha() {
     // Giro diferencial DERECHA: IZQ avanza, DER retrocede
+    pinMode(MOTOR_DER_FWD, OUTPUT); pinMode(MOTOR_DER_BCK, OUTPUT);
     digitalWrite(MOTOR_IZQ_BCK, LOW);
     digitalWrite(MOTOR_DER_FWD, LOW);
     digitalWrite(MOTOR_IZQ_FWD, HIGH);
@@ -208,6 +209,7 @@ void girarDerecha() {
 
 void girarIzquierda() {
     // Giro diferencial IZQUIERDA: DER avanza, IZQ retrocede
+    pinMode(MOTOR_DER_FWD, OUTPUT); pinMode(MOTOR_DER_BCK, OUTPUT);
     digitalWrite(MOTOR_IZQ_FWD, LOW);
     digitalWrite(MOTOR_DER_BCK, LOW);
     digitalWrite(MOTOR_DER_FWD, HIGH);
