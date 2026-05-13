@@ -155,36 +155,32 @@ void LOGs(const char* label, const char* val) {
 }
 
 // ============================================================
-//  MOTORES — Escritura atómica de registros GPIO
-//  GPOS = GPIO Output Set   → pone pines en HIGH simultáneamente
-//  GPOC = GPIO Output Clear → pone pines en LOW  simultáneamente
-//  Esto evita el desfase entre llantas que causa desvíos en línea recta.
+//  MOTORES — Escritura 100% atomica (un solo registro GPO)
+//  GPO = (GPO & ~todos) | nuevos  → un solo ciclo de CPU
+//  Esto elimina el desfase entre llantas en linea recta.
 //  GPIO14=IZQ_FWD, GPIO12=IZQ_BCK, GPIO13=DER_FWD, GPIO15=DER_BCK
 // ============================================================
 #define ALL_MOTOR_PINS    (PIN_MASK_IZQ_FWD | PIN_MASK_IZQ_BCK | PIN_MASK_DER_FWD | PIN_MASK_DER_BCK)
 
 void motoresStop() {
-    GPOC = ALL_MOTOR_PINS;  // Todos los pines de motor → LOW en un solo ciclo
+    GPO &= ~ALL_MOTOR_PINS;  // Todos los pines de motor → LOW en un solo ciclo
     LOG("[MOTOR] STOP — todos los pines en LOW (atomico)");
 }
 
 void avanzar() {
-    GPOC = PIN_MASK_IZQ_BCK | PIN_MASK_DER_BCK;  // Atrás → OFF
-    GPOS = PIN_MASK_IZQ_FWD | PIN_MASK_DER_FWD;  // Adelante → ON simultáneo
+    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_IZQ_FWD | PIN_MASK_DER_FWD;
     LOG("[MOTOR] AVANZAR — IZQ_FWD+DER_FWD HIGH (atomico)");
 }
 
 void girarDerecha() {
     // Solo llanta izquierda avanza, derecha quieta
-    GPOC = PIN_MASK_IZQ_BCK | PIN_MASK_DER_FWD | PIN_MASK_DER_BCK;
-    GPOS = PIN_MASK_IZQ_FWD;
+    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_IZQ_FWD;
     LOG("[MOTOR] GIRO DERECHA — solo IZQ_FWD=HIGH");
 }
 
 void girarIzquierda() {
     // Solo llanta derecha avanza, izquierda quieta
-    GPOC = PIN_MASK_IZQ_FWD | PIN_MASK_IZQ_BCK | PIN_MASK_DER_BCK;
-    GPOS = PIN_MASK_DER_FWD;
+    GPO = (GPO & ~ALL_MOTOR_PINS) | PIN_MASK_DER_FWD;
     LOG("[MOTOR] GIRO IZQUIERDA — solo DER_FWD=HIGH");
 }
 
