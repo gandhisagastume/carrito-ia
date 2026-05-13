@@ -82,6 +82,12 @@ float gyroZ_offset    = 0;
 unsigned long tiempoAnterior = 0;
 float anguloAcumulado = 0;
 
+// Macros de pines (definidas antes de las funciones que las usan)
+#define PIN_MASK_IZQ_FWD  (1 << 14)
+#define PIN_MASK_IZQ_BCK  (1 << 12)
+#define PIN_MASK_DER_FWD  (1 << 13)
+#define PIN_MASK_DER_BCK  (1 << 15)
+
 // ============================================================
 //  MOVIMIENTO MANUAL (sin encolar, ejecuta inmediatamente)
 // ============================================================
@@ -148,10 +154,6 @@ void LOGs(const char* label, const char* val) {
 //  Esto evita el desfase entre llantas que causa desvíos en línea recta.
 //  GPIO14=IZQ_FWD, GPIO12=IZQ_BCK, GPIO13=DER_FWD, GPIO15=DER_BCK
 // ============================================================
-#define PIN_MASK_IZQ_FWD  (1 << 14)
-#define PIN_MASK_IZQ_BCK  (1 << 12)
-#define PIN_MASK_DER_FWD  (1 << 13)
-#define PIN_MASK_DER_BCK  (1 << 15)
 #define ALL_MOTOR_PINS    (PIN_MASK_IZQ_FWD | PIN_MASK_IZQ_BCK | PIN_MASK_DER_FWD | PIN_MASK_DER_BCK)
 
 void motoresStop() {
