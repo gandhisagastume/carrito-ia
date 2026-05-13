@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Manual — Carrito A*</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #1a1a2e; color: white; }
+        .control-btn {
+            transition: all 0.1s ease;
+            user-select: none;
+        }
+        .control-btn:active {
+            transform: scale(0.92);
+            filter: brightness(1.2);
+        }
+        .control-btn.active-hold {
+            transform: scale(0.95);
+            filter: brightness(1.3);
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.5);
+        }
+        @keyframes commandFlash {
+            0% { background-color: rgba(59, 130, 246, 0.3); }
+            100% { background-color: transparent; }
+        }
+        .log-flash {
+            animation: commandFlash 0.4s ease-out;
+        }
+        .log-entry {
+            transition: all 0.2s;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-gray-900 border-b border-gray-700 p-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🎮</span>
+            <h1 class="text-xl font-bold text-yellow-500">CONTROL MANUAL</h1>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <a href="/" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg border border-gray-600 text-sm transition flex items-center gap-2">
+                <span>🧠</span>
+                <span>Modo A*</span>
+            </a>
+
+            <div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg border border-gray-600">
+                <span class="text-sm font-medium">ESP8266:</span>
+                <input type="text" id="espIp" value="192.168.4.1" class="bg-gray-700 border-gray-600 rounded px-2 py-1 text-sm w-32 focus:outline-none focus:ring-1 focus:ring-yellow-500" placeholder="IP">
+                <button id="btnCheckEsp" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm transition">Verificar</button>
+                <div class="flex items-center gap-2 ml-2">
+                    <span id="espStatus" class="w-3 h-3 rounded-full bg-gray-500"></span>
+                    <span id="espStatusText" class="text-xs text-gray-400 w-24">Desconectado</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 p-6 flex flex-col items-center justify-center gap-8">
+
+        <!-- Status Banner -->
+        <div class="bg-gray-800 rounded-xl px-6 py-3 border border-gray-700 flex items-center gap-4">
+            <span class="text-gray-400 text-sm">Estado del carrito:</span>
+            <span id="carStatus" class="text-green-400 font-bold text-sm">Listo</span>
+        </div>
+
+        <!-- Control Pad -->
+        <div class="bg-gray-800 rounded-3xl p-8 border border-gray-700 shadow-2xl">
+            <div class="grid grid-cols-3 gap-3 w-72">
+                <!-- Fila 1 -->
+                <div></div>
+                <button id="btnForward" class="control-btn bg-gradient-to-b from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 rounded-2xl h-20 flex items-center justify-center text-3xl shadow-lg border-b-4 border-green-900" data-action="FORWARD" title="Avanzar">
+                    ⬆️
+                </button>
+                <div></div>
+
+                <!-- Fila 2 -->
+                <button id="btnLeft" class="control-btn bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-2xl h-20 flex items-center justify-center text-3xl shadow-lg border-b-4 border-blue-900" data-action="LEFT" title="Girar Izquierda 90°">
+                    ↪️
+                </button>
+                <button id="btnStop" class="control-btn bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 rounded-2xl h-20 flex items-center justify-center text-3xl shadow-lg border-b-4 border-red-900" data-action="STOP" title="Detener">
+                    🛑
+                </button>
+                <button id="btnRight" class="control-btn bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-2xl h-20 flex items-center justify-center text-3xl shadow-lg border-b-4 border-blue-900" data-action="RIGHT" title="Girar Derecha 90°">
+                    ↩️
+                </button>
+
+                <!-- Fila 3 -->
+                <div></div>
+                <button id="btnBackward" class="control-btn bg-gradient-to-b from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 rounded-2xl h-20 flex items-center justify-center text-3xl shadow-lg border-b-4 border-orange-900" data-action="BACKWARD" title="Retroceder">
+                    ⬇️
+                </button>
+                <div></div>
+            </div>
+        </div>
+
+        <!-- Atajos de teclado -->
+        <div class="bg-gray-900 rounded-lg px-4 py-2 border border-gray-700 text-xs text-gray-400 flex items-center gap-3">
+            <span class="font-bold text-gray-300">⌨️ Atajos:</span>
+            <span><kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-gray-200">W</kbd> / <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-gray-200">↑</kbd> Adelante</span>
+            <span><kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-gray-200">S</kbd> / <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-gray-200">↓</kbd> Atras</span>
+            <span><kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-gray-200">A</kbd> / <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-gray-200">←</kbd> Izq</span>
+            <span><kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-gray-200">D</kbd> / <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-gray-200">→</kbd> Der</span>
+            <span><kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-gray-200">Espacio</kbd> Detener</span>
+        </div>
+
+        <!-- Log de Comandos -->
+        <div class="w-full max-w-md bg-gray-800 rounded-xl border border-gray-700 shadow-xl flex flex-col max-h-64 overflow-hidden">
+            <div class="px-4 py-2 border-b border-gray-700 flex justify-between items-center">
+                <h3 class="text-gray-300 font-bold text-sm">Log de Comandos</h3>
+                <button id="btnClearLog" class="text-xs text-gray-500 hover:text-gray-300 transition">Limpiar</button>
+            </div>
+            <div id="commandLog" class="flex-1 overflow-y-auto p-3 space-y-1 text-sm font-mono">
+                <div class="text-gray-500 italic text-center py-2">Presiona un boton para enviar un comando</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- CSRF Token -->
+    {% csrf_token %}
+
+    <script src="/static/js/manual.js"></script>
+</body>
+</html>

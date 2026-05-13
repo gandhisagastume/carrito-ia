@@ -83,6 +83,46 @@ unsigned long tiempoAnterior = 0;
 float anguloAcumulado = 0;
 
 // ============================================================
+//  MOVIMIENTO MANUAL (sin encolar, ejecuta inmediatamente)
+// ============================================================
+void retroceder() {
+    GPOC = PIN_MASK_IZQ_FWD | PIN_MASK_DER_FWD;  // Adelante → OFF
+    GPOS = PIN_MASK_IZQ_BCK | PIN_MASK_DER_BCK;  // Atras → ON simultaneo
+    LOG("[MANUAL] RETROCEDER — IZQ_BCK+DER_BCK HIGH (atomico)");
+}
+
+void ejecutarManual(const char* accion) {
+    if (strcmp(accion, "FORWARD") == 0) {
+        avanzar();
+    } else if (strcmp(accion, "BACKWARD") == 0) {
+        retroceder();
+    } else if (strcmp(accion, "LEFT") == 0) {
+        girarIzquierda();
+        delay(TIEMPO_GIRO_MS);
+        motoresStop();
+        return; // ya detuve
+    } else if (strcmp(accion, "RIGHT") == 0) {
+        girarDerecha();
+        delay(TIEMPO_GIRO_MS);
+        motoresStop();
+        return; // ya detuve
+    } else if (strcmp(accion, "STOP") == 0) {
+        motoresStop();
+    } else {
+        LOG("[MANUAL] Accion desconocida, ignorando.");
+        return;
+    }
+
+    // Para avanzar/retroceder, aplicamos un pulso corto (200ms) para que no se vaya lejos
+    // El frontend puede mantener presionado para "caminar" paso a paso
+    if (strcmp(accion, "FORWARD") == 0 || strcmp(accion, "BACKWARD") == 0) {
+        delay(250);
+        motoresStop();
+        LOG("[MANUAL] Motor detenido tras pulso corto.");
+    }
+}
+
+// ============================================================
 //  UTILIDAD DE LOG
 // ============================================================
 void LOG(const char* msg) {
@@ -476,6 +516,43 @@ void handleDebug() {
     LOG("[HTTP] GET /debug respondido");
 }
 
+void handleManual() {
+    LOG("[HTTP] POST /manual recibido");
+    if (server.method() != HTTP_POST) {
+        server.send(405, "application/json", "{\"error\":\"Solo POST\"}");
+        return;
+    }
+
+    String body = server.arg("plain");
+    Serial.print("[HTTP] Body: ");
+    Serial.println(body);
+
+    DynamicJsonDocument doc(512);
+    DeserializationError error = deserializeJson(doc, body);
+    if (error) {
+        Serial.print("[HTTP] ERROR JSON: ");
+        Serial.println(error.c_str());
+        server.send(400, "application/json", "{\"error\":\"JSON invalido\"}");
+        return;
+    }
+
+    if (!doc.containsKey("action")) {
+        server.send(400, "application/json", "{\"error\":\"Falta clave action\"}");
+        return;
+    }
+
+    const char* accion = doc["action"] | "UNKNOWN";
+    Serial.print("[MANUAL] Accion recibida: ");
+    Serial.println(accion);
+
+    // Ejecutar inmediatamente (no interferimos con la ejecucion autonoma si esta corriendo)
+    // Si esta ejecutando A*, simplemente intercalamos el manual (puede ser peligroso pero el usuario lo controla)
+    ejecutarManual(accion);
+
+    server.send(200, "application/json", "{\"status\":\"ok\",\"action\":\"" + String(accion) + "\"}");
+    LOG("[HTTP] /manual respondido OK");
+}
+
 // ============================================================
 //  SETUP
 // ============================================================
@@ -526,6 +603,7 @@ void setup() {
     server.on("/execute", HTTP_POST, handleExecute);
     server.on("/status",  HTTP_GET,  handleStatus);
     server.on("/debug",   HTTP_GET,  handleDebug);
+    server.on("/manual",  HTTP_POST, handleManual);
     server.begin();
     LOG("[SETUP] Servidor HTTP listo en puerto 80.");
     LOG("[SETUP] ===================================\n");
