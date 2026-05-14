@@ -32,6 +32,11 @@ const char* WIFI_PASSWORD = "soria123";
 #define PIN_BUZZER 16       // D0 → Positivo de la bocina
 
 // ============================================================
+//  PINES — LED (D4 / GPIO2)
+// ============================================================
+#define PIN_LED 2           // D4 → LED (ánodo vía 220Ω, cátodo a GND)
+
+// ============================================================
 //  PINES — MPU-9250
 // ============================================================
 #define MPU_SDA  4
@@ -46,7 +51,7 @@ const char* WIFI_PASSWORD = "soria123";
 // Cálculo: velocidad_real = distancia_real / tiempo_aplicado
 // Ejemplo: quería 52 cm, recorrió 200 cm, tiempo = 52/14*1s = 3.71s
 //          velocidad real = 200 / 3.71 ≈ 54 cm/s
-const float VELOCIDAD_CM_S  = 57.0;  // AJUSTADO: era 65.0, pero solo daba 22cm en vez de 25cm
+const float VELOCIDAD_CM_S  = 55.0;  // AJUSTADO: era 65.0, pero solo daba 22cm en vez de 25cm
 
 // ─────────────────────────────────────────────────────────────
 //  CÁLCULO GIRO DIFERENCIAL 90°
@@ -59,7 +64,7 @@ const float VELOCIDAD_CM_S  = 57.0;  // AJUSTADO: era 65.0, pero solo daba 22cm 
 const float  TRACK_WIDTH_CM = 18.0;    // Ancho entre centros de ruedas
 const float  ARCO_GIRO_CM   = (3.14159265 / 2.0) * (TRACK_WIDTH_CM / 2.0); // ≈ 14.14 cm
 // TIEMPO_GIRO_MS: ajustado a 275 ms para completar los 90° (antes daba 80° con 245ms).
-const unsigned long TIEMPO_GIRO_MS = 275;   // ms para giro diferencial 90°
+const unsigned long TIEMPO_GIRO_MS = 315;   // ms para giro diferencial 90°
 
 // Pausa entre instrucciones (ms)
 const unsigned long PAUSA_ENTRE_PASOS_MS = 1500;
@@ -99,6 +104,10 @@ bool mpuDisponible      = false;
 float gyroZ_offset    = 0;
 unsigned long tiempoAnterior = 0;
 float anguloAcumulado = 0;
+
+// ── LED heartbeat ──
+unsigned long ledLastToggle = 0;
+bool          ledState      = false;
 
 // Macros de pines (definidas antes de las funciones que las usan)
 #define PIN_MASK_IZQ_FWD  (1 << 14)
@@ -655,6 +664,19 @@ void setup() {
     pinMode(PIN_BUZZER, OUTPUT);
     digitalWrite(PIN_BUZZER, LOW);
     
+    // Configurar LED
+    pinMode(PIN_LED, OUTPUT);
+    digitalWrite(PIN_LED, HIGH);
+    LOG("[SETUP] LED configurado en D4 (GPIO2).");
+    
+    // Patrón de arranque del LED (3 parpadeos rápidos)
+    for (int i = 0; i < 3; i++) {
+        digitalWrite(PIN_LED, LOW);
+        delay(150);
+        digitalWrite(PIN_LED, HIGH);
+        delay(150);
+    }
+    
     // Pitido de encendido
     tone(PIN_BUZZER, 1500, 300);
 
@@ -699,6 +721,15 @@ void loop() {
 
     if (ejecutando && !terminado) {
         ejecutarSiguientePaso();
+    }
+
+    // ── LED heartbeat (no bloqueante) ──
+    unsigned long now = millis();
+    unsigned long interval = ejecutando ? 150 : 800;  // rápido al ejecutar, lento al idle
+    if (now - ledLastToggle > interval) {
+        ledState = !ledState;
+        digitalWrite(PIN_LED, ledState ? HIGH : LOW);
+        ledLastToggle = now;
     }
 
     yield();
