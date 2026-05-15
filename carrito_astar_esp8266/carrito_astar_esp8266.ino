@@ -51,7 +51,7 @@ const char* WIFI_PASSWORD = "soria123";
 // Cálculo: velocidad_real = distancia_real / tiempo_aplicado
 // Ejemplo: quería 52 cm, recorrió 200 cm, tiempo = 52/14*1s = 3.71s
 //          velocidad real = 200 / 3.71 ≈ 54 cm/s
-const float VELOCIDAD_CM_S  = 55.0;  // AJUSTADO: era 65.0, pero solo daba 22cm en vez de 25cm
+const float VELOCIDAD_CM_S  = 62.0;  // AJUSTADO: era 65.0, pero solo daba 22cm en vez de 25cm
 
 // ─────────────────────────────────────────────────────────────
 //  CÁLCULO GIRO DIFERENCIAL 90°
@@ -64,7 +64,7 @@ const float VELOCIDAD_CM_S  = 55.0;  // AJUSTADO: era 65.0, pero solo daba 22cm 
 const float  TRACK_WIDTH_CM = 18.0;    // Ancho entre centros de ruedas
 const float  ARCO_GIRO_CM   = (3.14159265 / 2.0) * (TRACK_WIDTH_CM / 2.0); // ≈ 14.14 cm
 // TIEMPO_GIRO_MS: ajustado a 275 ms para completar los 90° (antes daba 80° con 245ms).
-const unsigned long TIEMPO_GIRO_MS = 315;   // ms para giro diferencial 90°
+const unsigned long TIEMPO_GIRO_MS = 255;   // ms para giro diferencial 90°
 
 // Pausa entre instrucciones (ms)
 const unsigned long PAUSA_ENTRE_PASOS_MS = 1500;
@@ -436,11 +436,8 @@ void ejecutarGiro(bool esDerecha) {
     Serial.print("[EXEC] GIRO ");
     Serial.println(esDerecha ? "DERECHA" : "IZQUIERDA");
 
-    if (mpuDisponible) {
-        ejecutarGiroConGiroscopio(esDerecha);
-    } else {
-        ejecutarGiroConTiempo(esDerecha);
-    }
+    // Siempre usar tiempo fijo — giroscopio no calibrado
+    ejecutarGiroConTiempo(esDerecha);
 }
 
 void ejecutarSiguientePaso() {
